@@ -1,5 +1,6 @@
 /**
- * vspace - non-blocking sequence loading modularize loader
+ * vspace
+ * A non-blocking sequence loading modularize loader with namespace
  *
  * @version 1.0
  * @author visvoy@gmail.com

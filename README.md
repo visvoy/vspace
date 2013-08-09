@@ -1,4 +1,4 @@
 vspace
 ======
 
-JavaScript namespace and using library
+A non-blocking sequence loading modularize loader with namespace
