@@ -51,9 +51,17 @@ function trim(text) {
 
 // push a using script into waiting queue
 function pushUsing(ns) {
-    if (typeof usedSpace[ns] == 'undefined' && typeof waitQueue[ns] == 'undefined') {
+    if (typeof waitQueue[ns] == 'undefined' && (typeof usedSpace[ns] == 'undefined' || isStyleSheet(ns))) {
         waitQueue[ns] = 0;
     }
+}
+
+// check if the namespace is a style sheet file (css)
+function isStyleSheet(ns) {
+    if (ns.slice(-4).toLowerCase() == '.css' || ns.toLowerCase().indexOf('.css?') > 0) {
+        return true;
+    }
+    return false
 }
 
 // check if the namespace is a local script or cross size script
@@ -105,13 +113,13 @@ function sequenceDaemon() {
             usedSpace[ns] = 1;
             tmp = waitQueue[ns];
             delete waitQueue[ns];
-            eval.call(window, tmp);
+            runUsingCode(ns, tmp);
             continue;
         }
         
         // under sequenced loading and current using is running
         if (2 === waitQueue[ns] && config.sequence) {
-            // console.log('sequence on')
+            // console.log('sequence wait 2')
             return window.setTimeout(sequenceDaemon, config.frequency);
         }
         
@@ -171,15 +179,17 @@ function makeAjaxRequest() {
 // loading local script
 function sameDomainUsing(ns) {
     // console.log('local domain: ' + ns)
-    var url, req = makeAjaxRequest();
+    var url = ns, req = makeAjaxRequest();
     req.onreadystatechange = function() {
-		if (req.readyState != 4) {
-			return;
-		}
+    	if (req.readyState != 4) {
+    		return;
+    	}
         // console.log('ajax loaded: '+ns);
-		if (200 == req.status) {
+    	if (200 == req.status) {
             waitQueue[ns] = (typeof req.responseText == 'string' ? req.responseText : -1);
-		} else {
+            // if (isStyleSheet(ns)) alert(ns+'\n'+waitQueue[ns]);
+            // console.log('ajax res text: ', waitQueue[ns]);
+    	} else {
             waitQueue[ns] = -req.status;
             var logText = "using failed: " + ns + " got status: " + req.status;
             if (typeof req.responseText == 'string') {
@@ -189,7 +199,16 @@ function sameDomainUsing(ns) {
         }
     }
 
-    url = (ns.substr(-3) == '.js' ? ns : ns + '.js');
+    // if (isStyleSheet(ns)) {
+    //     if (url.slice(-4).toLowerCase() != '.css' && url.toLowerCase().indexOf('.css?') < 1) {
+    //         url += '.css';
+    //     }
+    // } else {
+    //     if (url.slice(-3).toLowerCase() != '.js' && url.toLowerCase().indexOf('.js?') < 1) {
+    //         url += '.js';
+    //     }
+    // }
+    
     if (url.indexOf("/") < 0 && config.basepath) {
         url = config.basepath + url;
     }
@@ -201,19 +220,46 @@ function sameDomainUsing(ns) {
 // load cross site script
 function crossDomainUsing(ns) {
     // console.log('cross domain: ' + ns)
-    var js = document.createElement('script');
-    js.onload = js.onreadystatechange = function() {
+    var isStyle = isStyleSheet(ns), cs = document.createElement(isStyle ? 'link' : 'script');
+    cs.onload = cs.onreadystatechange = function() {
         if ( ! this.readyState || 'loaded' == this.readyState || 'complete' == this.readyState) {
             // console.log('cross domain loaded: '+ns);
             waitQueue[ns] = 1;
-            // js.onload = js.onreadystatechange = null;
+            cs.onload = cs.onreadystatechange = null;
         }
     };
-    js.id = '_vspace_' + Math.random();
-    js.src = ns;
-    js.type = 'text/javascript';
-    // js.defer = true;
-    document.body.appendChild(js);
+
+    if (isStyle) {
+        cs.href = ns;
+        cs.rel = "stylesheet";
+        cs.type = "text/css";
+    } else {
+        cs.src = ns;
+        cs.type = 'text/javascript';
+        // cs.defer = true;
+    }
+    
+    cs.id = '_vspace_' + Math.random();
+    document.body.appendChild(cs);
+}
+
+// run code from ajax response
+function runUsingCode(ns, tmp) {
+    if ( ! isStyleSheet(ns)) {
+        eval.call(window, tmp);
+        return;
+    }
+    if (document.all) {
+        var tid = '_vspacecss_' + Math.random();
+        window[tid] = tmp;
+        document.createStyleSheet("javascript:window['" + tid + "'];");
+    } else {
+        var css = document.createElement('style'),
+            hd = document.head || document.getElementsByTagName('head')[0];
+        css.type = "text/css";
+        css.innerHTML = tmp;
+        hd.appendChild(css);
+    }
 }
 
 // apply namespace feature
