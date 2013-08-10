@@ -14,9 +14,16 @@ var
     
     // DOM document
     document = window.document,
+
+    // get brower type
+    ie = !! window.ActiveXObject,
+    ie6 = (ie && ! window.XMLHttpRequest),
     
     // current using sequence under loading
     waitQueue = {},
+    
+    // loading timeout queue
+    timeoutQueue = {},
     
     // loaded using storage
     usedSpace = {},
@@ -34,6 +41,9 @@ var
         
         // sequence daemon monitor frequency (ms)
         frequency: 50,
+        
+        // loader timeout (milliseconds)
+        timeout: 3000,
         
         // local script base path
         basepath: ''
@@ -198,16 +208,6 @@ function sameDomainUsing(ns) {
             writeLog(logText);
         }
     }
-
-    // if (isStyleSheet(ns)) {
-    //     if (url.slice(-4).toLowerCase() != '.css' && url.toLowerCase().indexOf('.css?') < 1) {
-    //         url += '.css';
-    //     }
-    // } else {
-    //     if (url.slice(-3).toLowerCase() != '.js' && url.toLowerCase().indexOf('.js?') < 1) {
-    //         url += '.js';
-    //     }
-    // }
     
     if (url.indexOf("/") < 0 && config.basepath) {
         url = config.basepath + url;
@@ -215,6 +215,8 @@ function sameDomainUsing(ns) {
 	req.open("GET", url);
 	req.setRequestHeader("X-Requested-With", "XMLHttpRequest");
 	req.send();
+    
+    timeoutMonitor(ns);
 }
 
 // load cross site script
@@ -241,6 +243,18 @@ function crossDomainUsing(ns) {
     
     cs.id = '_vspace_' + Math.random();
     document.body.appendChild(cs);
+    
+    timeoutMonitor(ns);
+}
+
+// using timeout monitor
+function timeoutMonitor(ns) {
+    timeoutQueue[ns] = window.setTimeout(function(){
+        if (typeof waitQueue[ns] != 'undefined' && 2 == waitQueue[ns]) {
+            waitQueue[ns] = -2;
+            writeLog('timeout: ' + ns);
+        }
+    }, config.timeout);
 }
 
 // run code from ajax response
@@ -249,7 +263,8 @@ function runUsingCode(ns, tmp) {
         eval.call(window, tmp);
         return;
     }
-    if (document.all) {
+    // if (document.all) {
+    if (ie6) {
         var tid = '_vspacecss_' + Math.random();
         window[tid] = tmp;
         document.createStyleSheet("javascript:window['" + tid + "'];");
@@ -257,7 +272,13 @@ function runUsingCode(ns, tmp) {
         var css = document.createElement('style'),
             hd = document.head || document.getElementsByTagName('head')[0];
         css.type = "text/css";
-        css.innerHTML = tmp;
+        if (css.textContent) {
+            css.textContent = tmp;  // FF, Safari
+        } else if (css.styleSheet) {
+            css.styleSheet.cssText = tmp; // FF, IE
+        } else {
+            css.innerHTML = tmp;
+        }
         hd.appendChild(css);
     }
 }
