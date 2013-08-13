@@ -200,7 +200,11 @@ function sameDomainUsing(ns) {
             // if (isStyleSheet(ns)) alert(ns+'\n'+waitQueue[ns]);
             // console.log('ajax res text: ', waitQueue[ns]);
     	} else {
-            waitQueue[ns] = -req.status;
+            if (0 == req.status) {
+                waitQueue[ns] = -404;
+            } else {
+                waitQueue[ns] = -req.status;
+            }
             var logText = "using failed: " + ns + " got status: " + req.status;
             if (typeof req.responseText == 'string') {
                 logText += " and detail:\n" + req.responseText;
