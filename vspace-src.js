@@ -307,11 +307,15 @@ window.namespace = function(ns) {
 
 // using any scripts
 window.using = function() {
+    if (1 == arguments.length && typeof arguments[0] == 'function') {
+        window.using.ready(arguments[0]);
+        return window.using;
+    }
+    
     for (var i = 0; i < arguments.length; i++) {
         // console.log('using '+arguments[i]);
         pushUsing(trim(arguments[i]));
     }
-    
     runSequenceDaemon();
     return window.using;
 };
