@@ -104,7 +104,7 @@ function runSequenceDaemon() {
 
 // using sequence daemon workflow
 function sequenceDaemon() {
-    var ns, tmp, haveWait = false;
+    var ns, tmp;
     
     // load all local domain first
     for (ns in waitQueue) {
@@ -154,12 +154,7 @@ function sequenceDaemon() {
 
     // check if any unfinished using, 
     // otherwise the daemon have to wait until all using item is loaded
-    haveWait = false;
     for (ns in waitQueue) {
-        haveWait = true;
-        break;
-    }
-    if (haveWait) {
         // console.log('daemon called', waitQueue);
         return window.setTimeout(sequenceDaemon, config.frequency);
     }
