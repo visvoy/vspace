@@ -77,6 +77,7 @@ function isStyleSheet(ns) {
 // check if the namespace is a local script or cross size script
 function isCrossDomain(ns) {
     var nsDomain = ns.indexOf('://');
+    
     if (nsDomain < 0) {
         return false;
     }
@@ -161,9 +162,10 @@ function sequenceDaemon() {
     
     // sequence complete, run callback
     daemonIsRunning = false;
-    // console.log('stop daemon, callback');
-    while (ns = callback.pop()) {
-        ns.call(window);
+    // console.log('stop daemon, callback',callback);
+    var fn;
+    while (fn = callback.pop()) {
+        fn.call(window);
     }
 }
 
@@ -240,7 +242,7 @@ function crossDomainUsing(ns) {
         // cs.defer = true;
     }
     
-    cs.id = '_vspace_' + Math.random();
+    cs.id = '_vspace_' + parseInt(Math.random() * 10000000);
     document.body.appendChild(cs);
     
     timeoutMonitor(ns);
@@ -317,8 +319,11 @@ window.using = function() {
 
 // attach using sequence all complete callback event
 window.using.ready = function(callbackFunc) {
-    callback.push(callbackFunc);
-    runSequenceDaemon();
+    window.setTimeout(function(){
+        // console.log("new callback added");
+        callback.push(callbackFunc);
+        runSequenceDaemon();
+    },config.frequency>>1);
 };
 
 // configuration
